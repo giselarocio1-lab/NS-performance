@@ -1,6 +1,6 @@
 // Pegá acá los datos de tu proyecto Firebase (paso 5 de la guía).
 export const firebaseConfig = {
-  apiKey: "AIzaSyARlRuwzg_EP67TqNzbjU754GhfUKzf5pY"
+  apiKey: "AIzaSyARlRuwzg_EP67TqNzbjU754GhfUKzf5pY",
   authDomain: "nsperformance.firebaseapp.com",
   projectId: "nsperformance",
   storageBucket: "nsperformance.firebasestorage.app",
