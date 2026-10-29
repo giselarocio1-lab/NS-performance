@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi Taller</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F4F5;--sf:#fff;--ink:#141214;--mu:#625C60;--ln:#D8D3D5;--br:#7A1530;--on:#fff;--r:#C0262D;--a:#B7791F;--b:#2B6CB0;--g:#2E7D4F;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121012;--sf:#1D191B;--ink:#F1EDEF;--mu:#A39CA0;--ln:#352E31;--br:#E0617F;--on:#141214;--r:#FF7A80;--a:#E8B04A;--b:#7DB3EE;--g:#58C285;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121012;--sf:#1D191B;--ink:#F1EDEF;--mu:#A39CA0;--ln:#352E31;--br:#E0617F;--on:#141214;--r:#FF7A80;--a:#E8B04A;--b:#7DB3EE;--g:#58C285;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Barlow,system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:14px 14px 150px}
+h1{font:700 30px/1.05 "Barlow Condensed",Impact,sans-serif;margin:6px 0 4px}
+h2{font:700 20px "Barlow Condensed",Impact,sans-serif;margin:20px 0 8px}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{background:var(--br);color:var(--on);border:0;border-radius:8px;padding:11px 16px;font-weight:600;cursor:pointer}
+.btn.sec{background:transparent;color:var(--ink);border:1px solid var(--ln)}
+.btn.del{background:transparent;color:var(--r);border:1px solid var(--ln);padding:5px 10px;font-size:13px}
+:focus-visible{outline:3px solid var(--br);outline-offset:2px}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.plate{font:700 22px/1 "Barlow Condensed",Impact,sans-serif;letter-spacing:2px;border:2px solid var(--ink);border-radius:6px;padding:4px 9px}
+.tag{font-size:13px;font-weight:600;border-radius:12px;padding:2px 10px;border:1px solid currentColor}
+.t0{color:var(--r)}.t1{color:var(--a)}.t2{color:var(--b)}.t3{color:var(--g)}
+.mu{color:var(--mu);font-size:14px}
+.wa{display:inline-block;background:var(--g);color:#fff;text-decoration:none;border-radius:8px;padding:8px 13px;font-weight:600;margin-top:8px}
+.fab{position:fixed;right:14px;bottom:calc(66px + env(safe-area-inset-bottom,0px));box-shadow:0 4px 14px rgba(0,0,0,.35);padding:14px 20px;border-radius:30px;z-index:3}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--sf);border-top:1px solid var(--ln);padding-bottom:env(safe-area-inset-bottom,0px);z-index:2}
+nav button{flex:1;border:0;background:none;padding:14px 4px;font-weight:600;color:var(--mu);cursor:pointer}
+nav button.on{color:var(--br);box-shadow:inset 0 3px var(--br)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.md{background:var(--bg);width:100%;max-width:720px;max-height:94%;overflow:auto;border-radius:14px 14px 0 0;padding:16px 14px 24px}
+label{display:block;font-size:14px;font-weight:600;margin:10px 0 3px}
+input,select,textarea{width:100%;background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fl{display:flex;gap:8px;flex-wrap:wrap}
+.fl label{display:flex;align-items:center;gap:6px;margin:0;border:1px solid var(--ln);background:var(--sf);border-radius:8px;padding:8px 12px;font-weight:500}
+.fl input{width:auto}
+.empty{text-align:center;padding:30px 10px;color:var(--mu)}
+.bar{height:10px;border-radius:6px;background:var(--ln);overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--br)}
+.hint{font-size:13px;color:var(--br);margin-top:4px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<button class="btn fab" onclick="openJ()">+ Cargar trabajo</button>
+<nav id="nav"></nav>
+<div id="modal"></div>
+<script>
+let D={veh:[],jobs:[],pend:[],cfg:{name:'Mi taller',interval:10000,rewardN:5,reward:'40% de descuento en el quinto service'}},tab='p',all=false;
+let FB=null,W=true,ready=false,authed=false;
+const err=e=>alert('No se pudo guardar: '+((e&&e.message)||e));
+function rebuild(){D.jobs=D.veh.flatMap(v=>(v.jobs||[]).map(j=>Object.assign({},j,{plate:v.plate,car:v.car,client:v.client,phone:v.phone})))}
+function pubOf(v){
+  const src=v.jobs.map(j=>Object.assign({},j,{plate:v.plate})),n=nextOf(v.plate,src);
+  return{plate:v.plate,car:v.car||'',scount:v.scount||0,nk:n?n.nk:null,due:n?n.due:null,
+    jobs:v.jobs.slice(-15).map(j=>({date:j.date,type:j.type,km:j.km,visc:j.visc||'',prod:j.prod||'',filters:j.filters||[],notes:j.notes||''}))};
+}
+async function saveVeh(v){try{await window.FB.setVeh(v.plate,v,pubOf(v))}catch(e){err(e)}}
+async function putJob(j){
+  const o=D.veh.find(x=>x.plate===j.plate),v=o?JSON.parse(JSON.stringify(o)):{plate:j.plate,jobs:[],scount:0};
+  v.car=j.car||v.car||'';v.client=j.client||v.client||'';v.phone=j.phone||v.phone||'';
+  v.jobs.push({id:j.id,km:j.km,date:j.date,type:j.type,visc:j.visc||'',prod:j.prod||'',filters:j.filters||[],notes:j.notes||'',price:j.price||0});
+  if(v.jobs.length>60)v.jobs.shift();
+  if(j.type==='Service')v.scount=(v.scount||0)+1;
+  await saveVeh(v);
+}
+async function rmJob(id){
+  const o=D.veh.find(x=>(x.jobs||[]).some(j=>j.id===id));if(!o)return;
+  const v=JSON.parse(JSON.stringify(o)),j=v.jobs.find(x=>x.id===id);
+  v.jobs=v.jobs.filter(x=>x.id!==id);if(j&&j.type==='Service')v.scount=Math.max(0,(v.scount||1)-1);
+  try{if(v.jobs.length)await window.FB.setVeh(v.plate,v,pubOf(v));else await window.FB.delVeh(v.plate)}catch(e){err(e)}
+}
+function putPend(p){return window.FB.setPend(p).catch(err)}
+function putCfg(c){return window.FB.setCfg(c).catch(err)}
+async function applyAll(d){
+  try{
+    const by={};for(const j of d.jobs||[]){(by[j.plate]=by[j.plate]||[]).push(j)}
+    for(const pl of Object.keys(by)){
+      const js=by[pl].sort((a,b)=>a.date-b.date),l=js[js.length-1];
+      await saveVeh({plate:pl,car:l.car||'',client:l.client||'',phone:l.phone||'',scount:js.filter(j=>j.type==='Service').length,
+        jobs:js.slice(-60).map(j=>({id:j.id,km:j.km,date:j.date,type:j.type,visc:j.visc||'',prod:j.prod||'',filters:j.filters||[],notes:j.notes||'',price:j.price||0}))});
+    }
+    for(const p of d.pend||[])await putPend(p);
+    if(d.cfg)await putCfg(d.cfg);
+    alert('Datos cargados.');
+  }catch(e){err(e)}
+}
+function refresh(){if(tab==='b')rB();else if(tab==='c')rC();else if(tab!=='a')render()}
+const status=()=>!ready?'Conectando…':'Sincronizado en la nube.';
+window.onAuth=a=>{authed=a;ready=true;if(a)closeM();else{D.veh=[];D.pend=[];rebuild()}render()};
+window.onData=(k,d)=>{if(k==='veh'){D.veh=d;rebuild()}else if(k==='pend')D.pend=d;else if(d)D.cfg=Object.assign({},D.cfg,d);refresh()};
+function loginUI(){$('modal').innerHTML=`<div class="ov" style="align-items:center"><div class="md" style="border-radius:14px;max-width:380px;margin:14px"><h1>Mi taller</h1><p class="mu">Ingresá la clave del taller.</p><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button class="btn" style="margin-top:12px;width:100%" onclick="doLogin()">Entrar</button></div></div>`}
+function doLogin(){window.FB.login($('lp').value).catch(()=>alert('Clave incorrecta o sin conexión.'))}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fd=d=>new Date(d).toLocaleDateString('es-AR');
+const nk=n=>(+n||0).toLocaleString('es-AR');
+const DAY=864e5;
+const norm=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+function waLink(phone,msg){let p=String(phone||'').replace(/\D/g,'').replace(/^0+/,'');if(p&&!p.startsWith('54'))p='549'+p.replace(/^15/,'');return 'https://wa.me/'+p+'?text='+encodeURIComponent(msg)}
+const last=pl=>D.jobs.filter(j=>j.plate===pl).sort((a,b)=>b.date-a.date)[0];
+const plates=()=>[...new Set(D.jobs.map(j=>j.plate))];
+function nextOf(pl,src){
+  const js=(src||D.jobs).filter(j=>j.plate===pl&&j.type==='Service').sort((a,b)=>a.date-b.date);
+  if(!js.length)return null;
+  const l=js[js.length-1],per=+D.cfg.interval||10000;let days=182;
+  if(js.length>1){const f=js[js.length-2],dk=l.km-f.km,dd=(l.date-f.date)/DAY;if(dk>0&&dd>0)days=Math.round(per/(dk/dd))}
+  days=Math.min(Math.max(days,30),365);
+  const due=l.date+days*DAY,left=Math.round((due-Date.now())/DAY);
+  return{l,nk:l.km+per,due,left,s:left<0?0:left<=15?1:left<=45?2:3};
+}
+const SN=['Vencido','Urgente','Próximo','Al día'];
+function msg(n){const l=n.l,w=n.left<0?'ya está vencido':n.left<=15?'está muy cerca':'se acerca';return `Hola ${l.client||''}, te escribimos de ${D.cfg.name}. El próximo service de tu ${l.car||'vehículo'} (${l.plate}) ${w}: te toca alrededor de los ${nk(n.nk)} km. ¿Querés que te agendemos un turno?`}
+
+function render(){
+  if(ready&&!authed){loginUI();return}
+  const f=document.querySelector('.fab');if(f)f.style.display=W?'':'none';
+  $('nav').innerHTML=[['p','Próximos'],['b','Buscar'],['c','Vista cliente'],['a','Ajustes']].map(([k,t])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${t}</button>`).join('');
+  $('app').innerHTML=tab==='p'?viewP():tab==='b'?viewB():tab==='c'?viewC():viewA();
+  if(tab==='b')rB();if(tab==='c')rC();
+}
+function viewP(){
+  const ns=plates().map(nextOf).filter(Boolean).sort((a,b)=>a.left-b.left);
+  const sh=all?ns:ns.filter(n=>n.s<3);
+  const card=n=>`<div class="card"><div class="row"><span class="plate">${esc(n.l.plate)}</span><span class="tag t${n.s}">${SN[n.s]}</span></div>
+  <div style="margin-top:8px"><b>${esc(n.l.car)}</b> · ${esc(n.l.client)}</div>
+  <div class="mu">Último service: ${nk(n.l.km)} km, ${fd(n.l.date)}. Próximo: ${nk(n.nk)} km, hacia el ${fd(n.due)}.</div>
+  ${n.l.phone?`<a class="wa" target="_blank" rel="noopener" href="${waLink(n.l.phone,msg(n))}">Escribirle por WhatsApp</a>`:'<div class="mu">Sin teléfono cargado.</div>'}</div>`;
+  const ps=D.pend.filter(p=>!p.done).sort((a,b)=>a.due-b.due);
+  return `<h1>${esc(D.cfg.name)}</h1><p class="mu" style="margin:0 0 6px">A quién llamar esta semana. ${status()}</p>
+  <div class="fl" style="margin:10px 0"><button class="btn ${all?'sec':''}" onclick="all=false;render()">A llamar</button><button class="btn ${all?'':'sec'}" onclick="all=true;render()">Todos</button></div>
+  ${sh.length?sh.map(card).join(''):`<div class="empty">${ns.length?'Nadie para llamar por ahora.':'Cargá el primer service y acá vas a ver a quién le toca volver.'}</div>`}
+  <h2>Trabajos pendientes</h2>
+  ${ps.length?ps.map(p=>{const l=last(p.plate)||{};const late=p.due<Date.now();return `<div class="card"><div class="row"><span class="plate">${esc(p.plate)}</span><span class="tag ${late?'t1':'t2'}">${late?'Ya toca':'Para el '+fd(p.due)}</span></div>
+  <div style="margin-top:8px">${esc(p.text)}</div><div class="mu">${esc(l.client)}</div>
+  <div class="row" style="margin-top:8px"><button class="btn sec" onclick="donePend(${p.id})">Marcar hecho</button>${l.phone?`<a class="wa" style="margin:0" target="_blank" rel="noopener" href="${waLink(l.phone,`Hola ${l.client||''}, te escribimos de ${D.cfg.name}. Quedó pendiente en tu ${l.car||'vehículo'} (${p.plate}): ${p.text}. ¿Lo coordinamos?`)}">WhatsApp</a>`:''}</div></div>`}).join(''):`<div class="empty">Anotá lo que le dijiste al cliente y nunca siguió nadie.</div>`}`;
+}
+function donePend(id){const p=D.pend.find(x=>x.id===id);if(p)putPend(Object.assign({},p,{done:true}))}
+function viewB(){return `<h1>Buscar</h1><p class="mu" style="margin:0 0 10px">Por patente, cliente o vehículo: aparece todo el historial.</p><input id="q" placeholder="Ej: ABC123" oninput="rB()" autocomplete="off"><div id="res" style="margin-top:12px"></div>`}
+function hist(pl){
+  return D.jobs.filter(j=>j.plate===pl).sort((a,b)=>b.date-a.date).map(j=>`<div style="border-top:1px solid var(--ln);padding:8px 0"><div class="row"><b>${j.type} · ${nk(j.km)} km</b><span class="mu">${fd(j.date)}</span></div>
+  <div class="mu">${j.type==='Service'?['Aceite '+(j.visc||'')+' '+(j.prod||''),...(j.filters||[]).map(f=>'filtro de '+f)].join(', '):''} ${esc(j.notes)}${j.price?' · $'+nk(j.price):''}</div>
+  <button class="btn del" onclick="delJ(${j.id})">Eliminar</button></div>`).join('');
+}
+function rB(){
+  const q=$('q');if(!q)return;const t=norm(q.value),tl=q.value.toLowerCase().trim();
+  const m=plates().filter(p=>{const l=last(p);return t&&p.includes(t)||tl&&((l.client||'').toLowerCase().includes(tl)||(l.car||'').toLowerCase().includes(tl))}).slice(0,6);
+  $('res').innerHTML=!tl?'':m.length?m.map(p=>{const l=last(p),n=nextOf(p);return `<div class="card"><div class="row"><span class="plate">${esc(p)}</span><span class="mu">${esc(l.car)} · ${esc(l.client)} ${esc(l.phone)}</span></div>${n?`<div class="hint">Próximo service: ${nk(n.nk)} km, hacia el ${fd(n.due)}</div>`:''}${hist(p)}</div>`}).join(''):'<div class="empty">No hay resultados.</div>';
+}
+function viewC(){return `<h1>Vista del cliente</h1><p class="mu" style="margin:0 0 10px">Esto es lo que ve tu cliente: escribe su patente y mira su historial y cuánto le falta para el premio. Mostrásela en tu celular o pasale el link de esta app.</p><input id="cp" placeholder="Patente" oninput="rC()" autocomplete="off" style="text-transform:uppercase;font-size:20px"><div id="cr" style="margin-top:12px"></div>`}
+function rC(){
+  const i=$('cp');if(!i)return;const p=norm(i.value);if(p.length<6){$('cr').innerHTML='';return}
+  const js=D.jobs.filter(j=>j.plate===p).sort((a,b)=>b.date-a.date);
+  if(!js.length){$('cr').innerHTML='<div class="empty">No encontramos esa patente.</div>';return}
+  const N=+D.cfg.rewardN||5,c=((D.veh.find(v=>v.plate===p)||{}).scount)||0,done=c%N,won=c>0&&done===0;
+  const n=nextOf(p);
+  $('cr').innerHTML=`<div class="card"><div class="row"><h1 style="margin:0">${esc(D.cfg.name)}</h1><span class="plate">${esc(p)}</span></div><div class="mu">${esc(js[0].car)}</div>
+  <h2>Tu premio</h2><b>Vas ${won?N:done} de ${N} services</b><div class="bar"><i style="width:${(won?N:done)/N*100}%"></i></div>
+  <div class="mu">${won?'¡Ganaste el premio! '+esc(D.cfg.reward):'Faltan '+(N-done)+'. '+esc(D.cfg.reward)}</div>
+  ${n?`<h2>Próximo service</h2><div>Alrededor de los <b>${nk(n.nk)} km</b>, hacia el ${fd(n.due)}.</div>`:''}
+  <h2>Historial</h2>${js.map(j=>`<div style="border-top:1px solid var(--ln);padding:8px 0"><div class="row"><b>${j.type} · ${nk(j.km)} km</b><span class="mu">${fd(j.date)}</span></div><div class="mu">${j.type==='Service'?['Aceite '+(j.visc||'')+' '+(j.prod||''),...(j.filters||[]).map(f=>'filtro de '+f)].join(', '):''} ${esc(j.notes)}</div></div>`).join('')}</div>`;
+}
+function viewA(){const c=D.cfg;return `<h1>Ajustes</h1>
+  <label>Nombre del taller</label><input id="cn" value="${esc(c.name)}">
+  <div class="g2"><div><label>Service cada (km)</label><input id="ci" type="number" value="${c.interval}"></div><div><label>Premio cada (services)</label><input id="cr2" type="number" value="${c.rewardN}"></div></div>
+  <label>Premio</label><input id="cw" value="${esc(c.reward)}">
+  <button class="btn" style="margin-top:12px" onclick="saveCfg()">Guardar ajustes</button>
+  <h2>Respaldo</h2><p class="mu">Una copia de seguridad extra. Copiá este texto y guardalo; para cargarlo de nuevo, pegalo y tocá Restaurar.</p>
+  <textarea id="bk" rows="6">${esc(JSON.stringify({jobs:D.jobs,pend:D.pend,cfg:D.cfg}))}</textarea>
+  <div class="fl" style="margin-top:10px"><button class="btn" onclick="navigator.clipboard&&navigator.clipboard.writeText($('bk').value).then(()=>alert('Copiado'))">Copiar respaldo</button><button class="btn sec" onclick="restore()">Restaurar</button></div><h2>Sesión</h2><button class="btn sec" onclick="window.FB.logout()">Cerrar sesión</button>`}
+function saveCfg(){putCfg({name:$('cn').value.trim()||'Mi taller',interval:+$('ci').value||10000,rewardN:+$('cr2').value||5,reward:$('cw').value.trim()});alert('Guardado')}
+function restore(){try{const d=JSON.parse($('bk').value);if(!d.jobs||!d.cfg)throw 0;if(!confirm('¿Cargar los datos de este respaldo?'))return;applyAll(d)}catch(e){alert('El texto no es un respaldo válido.')}}
+function delJ(id){if(confirm('¿Eliminar este trabajo?'))rmJob(id)}
+
+function openJ(){
+  $('modal').innerHTML=`<div class="ov" onclick="if(event.target===this)closeM()"><div class="md"><h1>Cargar trabajo</h1>
+  <div class="g2"><div><label>Patente</label><input id="jp" style="text-transform:uppercase" onblur="fill()" autocomplete="off"></div><div><label>Kilómetros</label><input id="jk" type="number" inputmode="numeric"></div></div>
+  <div id="jh" class="hint"></div>
+  <div class="g2"><div><label>Vehículo</label><input id="jc" placeholder="Chevrolet Corsa"></div><div><label>Cliente</label><input id="jn"></div></div>
+  <label>Teléfono (WhatsApp)</label><input id="jt" type="tel">
+  <label>Tipo de trabajo</label><select id="jy" onchange="tg()"><option>Service</option><option>Mecánica</option></select>
+  <div id="sv"><div class="g2"><div><label>Viscosidad</label><select id="jv">${['0W20','0W30','5W20','5W30','5W40','10W30','10W40','10W60','15W40','20W50','25W60','Otra'].map(v=>`<option>${v}</option>`).join('')}</select></div><div><label>Producto (opcional)</label><input id="jr" placeholder="Shell Helix HX7"></div></div>
+  <label>Filtros cambiados</label><div class="fl">${['aceite','aire','combustible','habitáculo'].map(f=>`<label><input type="checkbox" class="jf" value="${f}"> ${f[0].toUpperCase()+f.slice(1)}</label>`).join('')}</div></div>
+  <label id="ln">Notas</label><textarea id="jo" rows="2" placeholder="Lo que hiciste y repuestos que pusiste"></textarea>
+  <div class="g2"><div><label>Precio (opcional)</label><input id="jm" type="number" inputmode="numeric"></div><div></div></div>
+  <label>Trabajo pendiente (opcional)</label><div class="g2"><input id="pt" placeholder="Las pastillas están al 30%"><input id="pm" type="number" value="3" aria-label="Meses para el aviso"></div><div class="mu">El número es en cuántos meses querés que te lo recuerde.</div>
+  <div class="row" style="margin-top:16px"><button class="btn" onclick="saveJ()">Confirmar</button><button class="btn sec" onclick="closeM()">Cancelar</button></div></div></div>`;
+}
+function tg(){$('sv').style.display=$('jy').value==='Service'?'block':'none'}
+function fill(){
+  const p=norm($('jp').value),l=last(p);if(!l){$('jh').textContent='';return}
+  if(!$('jc').value)$('jc').value=l.car||'';if(!$('jn').value)$('jn').value=l.client||'';if(!$('jt').value)$('jt').value=l.phone||'';
+  const s=nextOf(p);$('jh').textContent=s?'Último service: '+nk(s.l.km)+' km':'Cliente conocido';
+}
+function saveJ(){
+  const plate=norm($('jp').value),km=+$('jk').value;
+  if(plate.length<6||!km){alert('Cargá la patente (6 o 7 caracteres) y los kilómetros.');return}
+  const id=Date.now();
+  putJob({id,plate,km,date:Date.now(),car:$('jc').value.trim(),client:$('jn').value.trim(),phone:$('jt').value.trim(),type:$('jy').value,visc:$('jv').value,prod:$('jr').value.trim(),filters:[...document.querySelectorAll('.jf:checked')].map(x=>x.value),notes:$('jo').value.trim(),price:+$('jm').value||0});
+  const t=$('pt').value.trim();
+  if(t)putPend({id:id+1,plate,text:t,due:Date.now()+(+$('pm').value||3)*30*DAY});
+  closeM();tab='p';render();
+}
+function closeM(){$('modal').innerHTML=''}
+render();setTimeout(()=>{if(!ready)$('app').innerHTML='<div class="empty">No se pudo conectar con la base de datos. Revisá config.js y tu conexión a internet.</div>'},8000);
+</script>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,collection,doc,setDoc,onSnapshot,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{firebaseConfig,WORKSHOP_EMAIL}from"./config.js";
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+let un=[];
+window.FB={
+  login:p=>signInWithEmailAndPassword(auth,WORKSHOP_EMAIL,p),
+  logout:()=>signOut(auth),
+  setVeh:(pl,v,pub)=>{const b=writeBatch(db);b.set(doc(db,'veh',pl),v);b.set(doc(db,'public',pl),pub);return b.commit()},
+  delVeh:pl=>{const b=writeBatch(db);b.delete(doc(db,'veh',pl));b.delete(doc(db,'public',pl));return b.commit()},
+  setPend:p=>setDoc(doc(db,'pend',String(p.id)),p),
+  setCfg:c=>setDoc(doc(db,'cfg','main'),c)
+};
+onAuthStateChanged(auth,u=>{
+  un.forEach(f=>f());un=[];
+  window.onAuth(!!u);
+  if(u)un=[
+    onSnapshot(collection(db,'veh'),s=>window.onData('veh',s.docs.map(d=>d.data()))),
+    onSnapshot(collection(db,'pend'),s=>window.onData('pend',s.docs.map(d=>d.data()))),
+    onSnapshot(doc(db,'cfg','main'),s=>window.onData('cfg',s.exists()?s.data():null))
+  ];
+});
+</script>
+</body>
+</html>
