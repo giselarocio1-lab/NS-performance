@@ -94,6 +94,7 @@ const status=()=>!ready?'Conectando…':'Sincronizado en la nube.';
 window.onAuth=a=>{authed=a;ready=true;if(a)closeM();else{D.veh=[];D.pend=[];rebuild()}render()};
 window.onData=(k,d)=>{if(k==='veh'){D.veh=d;rebuild()}else if(k==='pend')D.pend=d;else if(d)D.cfg=Object.assign({},D.cfg,d);refresh()};
 function loginUI(){$('modal').innerHTML=`<div class="ov" style="align-items:center"><div class="md" style="border-radius:14px;max-width:380px;margin:14px"><h1>Mi taller</h1><p class="mu">Ingresá la clave del taller.</p><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button class="btn" style="margin-top:12px;width:100%" onclick="doLogin()">Entrar</button></div></div>`}
+let failMsg='';window.onFail=e=>{failMsg=(e&&e.message)||String(e);render()};
 function doLogin(){window.FB.login($('lp').value).catch(()=>alert('Clave incorrecta o sin conexión.'))}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -117,6 +118,7 @@ const SN=['Vencido','Urgente','Próximo','Al día'];
 function msg(n){const l=n.l,w=n.left<0?'ya está vencido':n.left<=15?'está muy cerca':'se acerca';return `Hola ${l.client||''}, te escribimos de ${D.cfg.name}. El próximo service de tu ${l.car||'vehículo'} (${l.plate}) ${w}: te toca alrededor de los ${nk(n.nk)} km. ¿Querés que te agendemos un turno?`}
 
 function render(){
+  if(failMsg){$('app').innerHTML='<div class="empty"><b>No se pudo conectar con la base de datos.</b><br><br>'+esc(failMsg)+'<br><br>Revisá config.js y los pasos de la guía.</div>';return}
   if(ready&&!authed){loginUI();return}
   const f=document.querySelector('.fab');if(f)f.style.display=W?'':'none';
   $('nav').innerHTML=[['p','Próximos'],['b','Buscar'],['c','Vista cliente'],['a','Ajustes']].map(([k,t])=>`<button class="${tab===k?'on':''}" onclick="tab='${k}';render()">${t}</button>`).join('');
@@ -197,6 +199,7 @@ function fill(){
   const s=nextOf(p);$('jh').textContent=s?'Último service: '+nk(s.l.km)+' km':'Cliente conocido';
 }
 function saveJ(){
+  if(!window.FB){alert('Todavía no hay conexión con la base de datos. Recargá la página.');return}
   const plate=norm($('jp').value),km=+$('jk').value;
   if(plate.length<6||!km){alert('Cargá la patente (6 o 7 caracteres) y los kilómetros.');return}
   const id=Date.now();
@@ -206,24 +209,26 @@ function saveJ(){
   closeM();tab='p';render();
 }
 function closeM(){$('modal').innerHTML=''}
-render();setTimeout(()=>{if(!ready)$('app').innerHTML='<div class="empty">No se pudo conectar con la base de datos. Revisá config.js y tu conexión a internet.</div>'},8000);
+render();setTimeout(()=>{if(!ready&&!failMsg)$('app').innerHTML='<div class="empty">No se pudo conectar con la base de datos. Revisá config.js y tu conexión a internet.</div>'},8000);
 </script>
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,collection,doc,setDoc,onSnapshot,writeBatch}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import{firebaseConfig,WORKSHOP_EMAIL}from"./config.js";
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+try{
+const V="https://www.gstatic.com/firebasejs/10.12.2/";
+const [A,Au,Fs,C]=await Promise.all([import(V+"firebase-app.js"),import(V+"firebase-auth.js"),import(V+"firebase-firestore.js"),import("./config.js")]);
+const{firebaseConfig,WORKSHOP_EMAIL}=C;
+if(JSON.stringify(firebaseConfig).includes("PEGAR_AQUI"))throw new Error("config.js todavía tiene PEGAR_AQUI. Completá los datos de tu proyecto Firebase (paso 5 de la guía) y volvé a subir el archivo.");
+const app=A.initializeApp(firebaseConfig),auth=Au.getAuth(app),db=Fs.getFirestore(app);
+const{collection,doc,setDoc,onSnapshot,writeBatch}=Fs;
 let un=[];
 window.FB={
-  login:p=>signInWithEmailAndPassword(auth,WORKSHOP_EMAIL,p),
-  logout:()=>signOut(auth),
+  login:p=>Au.signInWithEmailAndPassword(auth,WORKSHOP_EMAIL,p),
+  logout:()=>Au.signOut(auth),
   setVeh:(pl,v,pub)=>{const b=writeBatch(db);b.set(doc(db,'veh',pl),v);b.set(doc(db,'public',pl),pub);return b.commit()},
   delVeh:pl=>{const b=writeBatch(db);b.delete(doc(db,'veh',pl));b.delete(doc(db,'public',pl));return b.commit()},
   setPend:p=>setDoc(doc(db,'pend',String(p.id)),p),
   setCfg:c=>setDoc(doc(db,'cfg','main'),c)
 };
-onAuthStateChanged(auth,u=>{
+Au.onAuthStateChanged(auth,u=>{
   un.forEach(f=>f());un=[];
   window.onAuth(!!u);
   if(u)un=[
@@ -232,6 +237,7 @@ onAuthStateChanged(auth,u=>{
     onSnapshot(doc(db,'cfg','main'),s=>window.onData('cfg',s.exists()?s.data():null))
   ];
 });
+}catch(e){window.onFail(e)}
 </script>
 </body>
 </html>
